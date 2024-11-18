@@ -44,7 +44,15 @@ def knn_impute_by_item(matrix, valid_data, k):
     # TODO:                                                             #
     # Implement the function as described in the docstring.             #
     #####################################################################
-    acc = None
+    # Transpose the matrix to perform item-based filtering
+    matrix_t = matrix.T
+    nbrs = KNNImputer(n_neighbors=k)
+    # Fit and transform on transposed matrix
+    mat = nbrs.fit_transform(matrix_t)
+    # Transpose back to original shape
+    mat = mat.T
+    acc = sparse_matrix_evaluate(valid_data, mat)
+    print("Validation Accuracy: {}".format(acc))
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
@@ -67,7 +75,54 @@ def main():
     # the best performance and report the test accuracy with the        #
     # chosen k*.                                                        #
     #####################################################################
-    pass
+    # Define k values to test
+    k_values = [1, 6, 11, 16, 21, 26]
+    
+    # User-based collaborative filtering
+    print("\nUser-based collaborative filtering:")
+    user_accuracies = []
+    for k in k_values:
+        print(f"\nk = {k}")
+        acc = knn_impute_by_user(sparse_matrix, val_data, k)
+        user_accuracies.append(acc)
+    
+    # Plot user-based results
+    plt.figure(figsize=(10, 5))
+    plt.plot(k_values, user_accuracies, 'bo-')
+    plt.xlabel('k')
+    plt.ylabel('Validation Accuracy')
+    plt.title('User-based Collaborative Filtering: Accuracy vs k')
+    plt.grid(True)
+    plt.show()
+    
+    # Find best k and evaluate on test set
+    best_k_user = k_values[np.argmax(user_accuracies)]
+    print(f"\nBest k for user-based: {best_k_user}")
+    final_user_acc = knn_impute_by_user(sparse_matrix, test_data, best_k_user)
+    print(f"Final test accuracy (user-based): {final_user_acc}")
+    
+    # Item-based collaborative filtering
+    print("\nItem-based collaborative filtering:")
+    item_accuracies = []
+    for k in k_values:
+        print(f"\nk = {k}")
+        acc = knn_impute_by_item(sparse_matrix, val_data, k)
+        item_accuracies.append(acc)
+    
+    # Plot item-based results
+    plt.figure(figsize=(10, 5))
+    plt.plot(k_values, item_accuracies, 'ro-')
+    plt.xlabel('k')
+    plt.ylabel('Validation Accuracy')
+    plt.title('Item-based Collaborative Filtering: Accuracy vs k')
+    plt.grid(True)
+    plt.show()
+    
+    # Find best k and evaluate on test set
+    best_k_item = k_values[np.argmax(item_accuracies)]
+    print(f"\nBest k for item-based: {best_k_item}")
+    final_item_acc = knn_impute_by_item(sparse_matrix, test_data, best_k_item)
+    print(f"Final test accuracy (item-based): {final_item_acc}")
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################

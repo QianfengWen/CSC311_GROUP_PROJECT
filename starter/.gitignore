@@ -1,0 +1,10 @@
+# ignore _pycache_
+__pycache__/
+
+# ignore .DS_Store
+.DS_Store
+
+# ignore .ipynb_checkpoints
+.ipynb_checkpoints
+
+
