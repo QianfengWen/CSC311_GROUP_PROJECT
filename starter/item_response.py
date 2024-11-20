@@ -178,8 +178,10 @@ def main():
 
     test_nll = neg_log_likelihood(test_data, theta=theta, beta=beta)
     test_accuracy = evaluate(test_data, theta=theta, beta=beta)
+    valid_accuracy = evaluate(val_data, theta=theta, beta=beta)
     print("test negative log likelihood: {:.4f}".format(test_nll))
     print("test accuracy: {:.4f}".format(test_accuracy))
+    print("validation accuracy: {:.4f}".format(valid_accuracy))
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
