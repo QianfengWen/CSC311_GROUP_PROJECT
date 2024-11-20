@@ -27,7 +27,8 @@ def neg_log_likelihood(data, theta, beta):
     # TODO:                                                             #
     # Implement the function as described in the docstring.             #
     #####################################################################
-    log_lklihood = 0.0
+    # data (theta - beta) - log (1 + exp(theta - beta))
+    log_lklihood = np.sum(data["is_correct"] * (theta[data["user_id"]] - beta[data["question_id"]]) - np.log(1 + np.exp(theta[data["user_id"]] - beta[data["question_id"]])))
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
@@ -55,7 +56,24 @@ def update_theta_beta(data, lr, theta, beta):
     # TODO:                                                             #
     # Implement the function as described in the docstring.             #
     #####################################################################
-    pass
+    # sigmoid(theta - beta)
+    sig = sigmoid(theta[data["user_id"]] - beta[data["question_id"]])
+    
+    # d/dtheta = c - sigmoid(theta - beta) 
+    theta_grad = data["is_correct"] - sig
+     
+    # d/dbeta = sigmoid(theta - beta) - c
+    beta_grad = sig - data["is_correct"]
+    
+    theta_update = np.zeros(len(theta))
+    beta_update = np.zeros(len(beta))
+    
+    np.add.at(theta_update, data["user_id"], theta_grad)
+    
+    np.add.at(beta_update, data["question_id"], beta_grad)
+    
+    theta = theta + (lr * theta_update)
+    beta = beta + (lr * beta_update)
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
@@ -76,20 +94,25 @@ def irt(data, val_data, lr, iterations):
     :return: (theta, beta, val_acc_lst)
     """
     # TODO: Initialize theta and beta.
-    theta = None
-    beta = None
+    num_users = max(data["user_id"]) + 1
+    num_questions = max(data["question_id"]) + 1
+    theta = np.zeros(num_users)
+    beta = np.zeros(num_questions)
 
-    val_acc_lst = []
-
+    train_nll_lst = []
+    val_nll_lst = []
     for i in range(iterations):
         neg_lld = neg_log_likelihood(data, theta=theta, beta=beta)
+        val_neg_lld = neg_log_likelihood(val_data, theta=theta, beta=beta)
         score = evaluate(data=val_data, theta=theta, beta=beta)
-        val_acc_lst.append(score)
+        # val_acc_lst.append(score)
+        train_nll_lst.append(neg_lld)
+        val_nll_lst.append(val_neg_lld)
         print("NLLK: {} \t Score: {}".format(neg_lld, score))
         theta, beta = update_theta_beta(data, lr, theta, beta)
 
     # TODO: You may change the return values to achieve what you want.
-    return theta, beta, val_acc_lst
+    return theta, beta, train_nll_lst, val_nll_lst
 
 
 def evaluate(data, theta, beta):
@@ -122,7 +145,9 @@ def main():
     # Tune learning rate and number of iterations. With the implemented #
     # code, report the validation and test accuracy.                    #
     #####################################################################
-    pass
+    lr = 0.01
+    iterations = 50
+    theta, beta, train_nll_lst, val_nll_lst = irt(train_data, val_data, 0.01, 50)
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
