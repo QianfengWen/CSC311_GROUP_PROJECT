@@ -5,7 +5,7 @@ from utils import (
     load_train_sparse,
 )
 import numpy as np
-
+import matplotlib.pyplot as plt
 
 def sigmoid(x):
     """Apply sigmoid function."""
@@ -108,7 +108,7 @@ def irt(data, val_data, lr, iterations):
         # val_acc_lst.append(score)
         train_nll_lst.append(neg_lld)
         val_nll_lst.append(val_neg_lld)
-        print("NLLK: {} \t Score: {}".format(neg_lld, score))
+        print(f"iteration {i+1}/{iterations} - train NLL: {neg_lld:.4f} \t validation NLL: {val_neg_lld:.4f}")
         theta, beta = update_theta_beta(data, lr, theta, beta)
 
     # TODO: You may change the return values to achieve what you want.
@@ -132,13 +132,29 @@ def evaluate(data, theta, beta):
         pred.append(p_a >= 0.5)
     return np.sum((data["is_correct"] == np.array(pred))) / len(data["is_correct"])
 
+def plot_probability_curves(theta, beta, selected_questions, save_path='probability_curves.png'):
+    plt.figure(figsize=(10, 6))
+    theta_range = np.linspace(min(theta) - 1, max(theta) + 1, 300)
+
+    for j in selected_questions:
+        beta_j = beta[j]
+        p_correct = sigmoid(theta_range - beta_j)
+        plt.plot(theta_range, p_correct, label=f'problem {j} (β={beta_j:.2f})')
+
+    plt.xlabel('θ (student ability)')
+    plt.ylabel('p(cij = 1)')
+    plt.title('Different problems with student ability')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(save_path)
+    plt.show()
 
 def main():
-    train_data = load_train_csv("./data")
+    train_data = load_train_csv("/Users/quanjunwei/PycharmProjects/CSC311_GROUP_PROJECT/starter/data")
     # You may optionally use the sparse matrix.
     # sparse_matrix = load_train_sparse("./data")
-    val_data = load_valid_csv("./data")
-    test_data = load_public_test_csv("./data")
+    val_data = load_valid_csv("/Users/quanjunwei/PycharmProjects/CSC311_GROUP_PROJECT/starter/data")
+    test_data = load_public_test_csv("/Users/quanjunwei/PycharmProjects/CSC311_GROUP_PROJECT/starter/data")
 
     #####################################################################
     # TODO:                                                             #
@@ -146,8 +162,24 @@ def main():
     # code, report the validation and test accuracy.                    #
     #####################################################################
     lr = 0.01
-    iterations = 50
-    theta, beta, train_nll_lst, val_nll_lst = irt(train_data, val_data, 0.01, 50)
+    iterations = 100
+    theta, beta, train_nll, val_nll = irt(train_data, val_data, lr, iterations)
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(1, iterations + 1), train_nll, label='train negative log likelihood')
+    plt.plot(range(1, iterations + 1), val_nll, label='validation negative log likelihood')
+    plt.xlabel('iterations')
+    plt.ylabel('negative log likelihood')
+    plt.title('training and validation negative log likelihood curve')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig('training_curve.png')
+    plt.show()
+
+    test_nll = neg_log_likelihood(test_data, theta=theta, beta=beta)
+    test_accuracy = evaluate(test_data, theta=theta, beta=beta)
+    print("test negative log likelihood: {:.4f}".format(test_nll))
+    print("test accuracy: {:.4f}".format(test_accuracy))
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
@@ -156,7 +188,13 @@ def main():
     # TODO:                                                             #
     # Implement part (d)                                                #
     #####################################################################
-    pass
+    sorted_questions = np.argsort(beta)
+    j1 = sorted_questions[0]  # easiest
+    j2 = sorted_questions[len(beta) // 2]  # medium
+    j3 = sorted_questions[-1]  # hardest
+
+    selected_questions = [j1, j2, j3]
+    plot_probability_curves(theta, beta, selected_questions, save_path='probability_curves.png')
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
