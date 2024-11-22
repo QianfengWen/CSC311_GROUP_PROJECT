@@ -73,8 +73,7 @@ class AutoEncoder(nn.Module):
         # Implement the function as described in the docstring.             #
         # Use sigmoid activations for f and g.                              #
         #####################################################################
-        hidden = torch.sigmoid(self.g(inputs))
-        output = torch.sigmoid(self.h(hidden))
+        output = torch.sigmoid(self.h(torch.sigmoid(self.g(inputs))))
         #####################################################################
         #                       END OF YOUR CODE                            #
         #####################################################################
@@ -121,9 +120,7 @@ def train(model, lr, lamb, train_data, zero_train_data, valid_data, num_epoch):
             nan_mask = torch.from_numpy(nan_mask).bool()
             target[nan_mask] = output[nan_mask]
 
-            loss = torch.sum((output - target) ** 2.0)
-            if lamb != 0:
-                loss += lamb * model.get_weight_norm()
+            loss = torch.sum((output - target) ** 2.) + (lamb / 2) * model.get_weight_norm()
             loss.backward()
 
             train_loss += loss.item()
@@ -137,7 +134,34 @@ def train(model, lr, lamb, train_data, zero_train_data, valid_data, num_epoch):
         )
         train_loss_history.append(train_loss)
         valid_acc_history.append(valid_acc)
-    return train_loss_history, valid_acc_history
+    
+    # report final validation accuracy
+    print('Final validation accuracy: {}'.format(valid_acc_history[-1]))
+
+    # Create figure with two subplots
+    # fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    # fig.suptitle('Training Progress', fontsize=14)
+
+    # # Plot validation accuracy
+    # epochs = range(num_epoch)
+    # ax1.plot(epochs, valid_acc_history, 'b-', linewidth=2, label='Validation Accuracy')
+    # ax1.set_xlabel('Number of Epochs')
+    # ax1.set_ylabel('Accuracy')
+    # ax1.set_title('Validation Accuracy vs Epochs')
+    # ax1.grid(True)
+    # ax1.legend()
+
+    # # Plot training loss 
+    # ax2.plot(epochs, train_loss_history, 'r-', linewidth=2, label='Training Loss')
+    # ax2.set_xlabel('Number of Epochs')
+    # ax2.set_ylabel('Loss')
+    # ax2.set_title('Training Loss vs Epochs')
+    # ax2.grid(True)
+    # ax2.legend()
+
+    # # Adjust layout and display
+    # plt.tight_layout()
+    # plt.show()
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
@@ -170,7 +194,7 @@ def evaluate(model, train_data, valid_data):
 
 
 def main():
-    zero_train_matrix, train_matrix, valid_data, test_data = load_data("/Users/quanjunwei/PycharmProjects/CSC311_GROUP_PROJECT/starter/data")
+    zero_train_matrix, train_matrix, valid_data, test_data = load_data("./data")
 
     #####################################################################
     # TODO:                                                             #
@@ -178,137 +202,25 @@ def main():
     # validation set.                                                   #
     #####################################################################
     # Set model hyperparameters.
-    k = [10, 50, 100, 200, 500]
-    best_k = None
-    best_acc = 0
-    results = {}
-    model = None
-
-    # Set optimization hyperparameters.
-    lr = 0.01
-    num_epoch = 50
-    lamb = 0
-
+    
+    # k = [10, 50, 100, 200, 500]
+    k = [50]
     for k in k:
-        print(f"Training with k={k}")
         model = AutoEncoder(train_matrix.shape[1], k)
-        train_loss_history, valid_acc_history = train(model, lr, lamb, train_matrix, zero_train_matrix, valid_data, num_epoch)
-        final_acc = valid_acc_history[-1]
-        results[k] = final_acc
-        if final_acc > best_acc:
-            best_acc = final_acc
-            best_k = k
-            best_train_loss_history = train_loss_history
-            best_valid_acc_history = valid_acc_history
-    print(f"Best k selected: {best_k} with validation accuracy: {best_acc}")
 
-    epochs = range(1, num_epoch + 1)
-    # Create figure and axis objects with a single subplot
-    fig, ax1 = plt.subplots(figsize=(10, 6))
+        # Set optimization hyperparameters.
+        lr = 0.01
+        num_epoch = 50
+        # lamb = [0.001, 0.01, 0.1, 1]
+        lamb = [0.001]
+        # lamb = [0]
+        for lamb in lamb:
+            train(model, lr, lamb, train_matrix, zero_train_matrix,
+                    valid_data, num_epoch)
 
-    # Plot training loss on left y-axis
-    color = 'tab:blue'
-    ax1.set_xlabel('Epoch')
-    ax1.set_ylabel('Training Loss', color=color)
-    line1 = ax1.plot(epochs, best_train_loss_history, color=color, label='Training Loss')
-    ax1.tick_params(axis='y', labelcolor=color)
-
-    # Create second y-axis that shares x-axis
-    ax2 = ax1.twinx()
-
-    # Plot validation accuracy on right y-axis
-    color = 'tab:red'
-    ax2.set_ylabel('Validation Accuracy', color=color)
-    line2 = ax2.plot(epochs, best_valid_acc_history, color=color, label='Validation Accuracy')
-    ax2.tick_params(axis='y', labelcolor=color)
-
-    # Add title
-    plt.title(f'Training Loss and Validation Accuracy vs. Epoch (k={best_k})')
-
-    # Add legend
-    lines = line1 + line2
-    labels = [l.get_label() for l in lines]
-    ax1.legend(lines, labels, loc='center right')
-
-    # Add grid
-    ax1.grid(True, alpha=0.3)
-
-    plt.tight_layout()
-    plt.savefig('training_validation_metrics_k{}.png'.format(best_k))
-    plt.show()
-
-
-    # Next, evaluate your network on validation/test data
-
-    test_acc = evaluate(model, zero_train_matrix, test_data)
-    print(f"Test Accuracy with k = {best_k}: {test_acc}")
-
-    # add l2 regularization
-    lambda_values = [0, 0.001, 0.01, 0.1, 1]
-    best_lambda = None
-    best_reg_acc = 0
-    best_reg_train_acc = 0
-    best_reg_valid_acc = 0
-
-    print("\nTraining with L2 Regularization")
-    for lamb in lambda_values:
-        print(f"\nTraining with k={best_k} and lambda={lamb}")
-        model = AutoEncoder(num_question=zero_train_matrix.shape[1], k=best_k)
-        train_loss_history, valid_acc_history = train(
-            model,
-            lr=lr,
-            lamb=lamb,
-            train_data=train_matrix,
-            zero_train_data=zero_train_matrix,
-            valid_data=valid_data,
-            num_epoch=num_epoch,
-        )
-        final_acc = valid_acc_history[-1]
-        print(f"Validation Accuracy with lambda={lamb}: {final_acc}")
-        if final_acc > best_reg_acc:
-            best_reg_acc = final_acc
-            best_lambda = lamb
-            best_reg_train_loss = train_loss_history
-            best_reg_valid_acc = valid_acc_history
-
-    print(f"\nBest lambda selected: {best_lambda} with validation accuracy: {best_reg_acc}")
-
-        # Create figure and axis objects with a single subplot
-    fig, ax1 = plt.subplots(figsize=(10, 6))
-
-    # Plot training loss on left y-axis
-    color = 'tab:blue'
-    ax1.set_xlabel('Epoch')
-    ax1.set_ylabel('Training Loss with Regularization', color=color)
-    line1 = ax1.plot(epochs, best_reg_train_loss, color=color, label='Training Loss with Regularization')
-    ax1.tick_params(axis='y', labelcolor=color)
-
-    # Create second y-axis that shares x-axis
-    ax2 = ax1.twinx()
-
-    # Plot validation accuracy on right y-axis
-    color = 'tab:red'
-    ax2.set_ylabel('Validation Accuracy', color=color)
-    line2 = ax2.plot(epochs, best_reg_valid_acc, color=color, label='Validation Accuracy with Regularization')
-    ax2.tick_params(axis='y', labelcolor=color)
-
-    # Add title
-    plt.title(f'Training and Validation Metrics for k={best_k}, λ={best_lambda}')
-
-    # Add legend
-    lines = line1 + line2
-    labels = [l.get_label() for l in lines]
-    ax1.legend(lines, labels, loc='center right')
-
-    # Add grid
-    ax1.grid(True, alpha=0.3)
-
-    plt.tight_layout()
-    plt.savefig('training_validation_metrics_k{}_lambda{}.png'.format(best_k, best_lambda))
-    plt.show()
-
-    test_acc_reg = evaluate(model, zero_train_matrix, test_data)
-    print(f"Test Accuracy with k = {best_k} and lambda = {best_lambda}: {test_acc_reg}")
+            # final test accuracy
+            test_acc = evaluate(model, zero_train_matrix, test_data)
+            print('Final test accuracy: {}'.format(test_acc))
 
     #####################################################################
     #                       END OF YOUR CODE                            #

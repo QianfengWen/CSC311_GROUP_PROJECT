@@ -97,7 +97,7 @@ def main():
     
     # Find best k and evaluate on test set
     best_k_user = k_values[np.argmax(user_accuracies)]
-    print(f"\nBest k for user-based: {best_k_user}")
+    print(f"Best k for user-based: {best_k_user}")
     final_user_acc = knn_impute_by_user(sparse_matrix, test_data, best_k_user)
     print(f"Final test accuracy (user-based): {final_user_acc}")
     
@@ -120,7 +120,7 @@ def main():
     
     # Find best k and evaluate on test set
     best_k_item = k_values[np.argmax(item_accuracies)]
-    print(f"\nBest k for item-based: {best_k_item}")
+    print(f"Best k for item-based: {best_k_item}")
     final_item_acc = knn_impute_by_item(sparse_matrix, test_data, best_k_item)
     print(f"Final test accuracy (item-based): {final_item_acc}")
     #####################################################################
