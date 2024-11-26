@@ -39,41 +39,6 @@ def load_data(base_path="./data"):
 
     return zero_train_matrix, train_matrix, valid_data, test_data
 
-class DeepAutoEncoder(nn.Module):
-    def __init__(self, num_question, k=100):
-        super(DeepAutoEncoder, self).__init__()
-        
-        # 编码器
-        self.encoder = nn.Sequential(
-            nn.Linear(num_question, k),
-            nn.Sigmoid(),
-            nn.Dropout(0.2),
-            nn.Linear(k, k//2),
-            nn.Sigmoid(),
-            nn.Dropout(0.2)
-        )
-        
-        # 解码器
-        self.decoder = nn.Sequential(
-            nn.Linear(k//2, k),
-            nn.Sigmoid(),
-            nn.Dropout(0.2),
-            nn.Linear(k, num_question),
-            nn.Sigmoid()
-        )
-
-    def get_weight_norm(self):
-        """Return L2 norm of weights"""
-        total_norm = 0
-        for layer in list(self.encoder) + list(self.decoder):
-            if isinstance(layer, nn.Linear):
-                total_norm += torch.norm(layer.weight, 2) ** 2
-        return total_norm
-
-    def forward(self, inputs):
-        encoded = self.encoder(inputs)
-        decoded = self.decoder(encoded)
-        return decoded
 
 class AutoEncoder(nn.Module):
     def __init__(self, num_question, k=100):
@@ -113,19 +78,6 @@ class AutoEncoder(nn.Module):
         #                       END OF YOUR CODE                            #
         #####################################################################
         return output
-    
-def extract_user_features(model, train_data):
-    """Extract latent features for each user using the trained autoencoder.
-
-    :param model: Trained autoencoder model.
-    :param train_data: 2D FloatTensor
-    :return: np.ndarray of user features.
-    """
-    model.eval()
-    with torch.no_grad():
-        features = model.encoder(train_data).numpy()
-    return features
-
 
 
 def train(model, lr, lamb, train_data, zero_train_data, valid_data, num_epoch):
@@ -147,8 +99,7 @@ def train(model, lr, lamb, train_data, zero_train_data, valid_data, num_epoch):
     model.train()
 
     # Define optimizers and loss function.
-    # optimizer = optim.SGD(model.parameters(), lr=lr)
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+    optimizer = optim.SGD(model.parameters(), lr=lr)
     num_student = train_data.shape[0]
 
     train_loss_history = []
@@ -176,11 +127,11 @@ def train(model, lr, lamb, train_data, zero_train_data, valid_data, num_epoch):
             optimizer.step()
 
         valid_acc = evaluate(model, zero_train_data, valid_data)
-        print(
-            "Epoch: {} \tTraining Cost: {:.6f}\t " "Valid Acc: {}".format(
-                epoch, train_loss, valid_acc
-            )
-        )
+        # print(
+        #     "Epoch: {} \tTraining Cost: {:.6f}\t " "Valid Acc: {}".format(
+        #         epoch, train_loss, valid_acc
+        #     )
+        # )
         train_loss_history.append(train_loss)
         valid_acc_history.append(valid_acc)
     
@@ -243,7 +194,7 @@ def evaluate(model, train_data, valid_data):
 
 
 def main():
-    zero_train_matrix, train_matrix, valid_data, test_data = load_data("/Users/quanjunwei/PycharmProjects/CSC311_GROUP_PROJECT/starter/data")
+    zero_train_matrix, train_matrix, valid_data, test_data = load_data("./data")
 
     #####################################################################
     # TODO:                                                             #
@@ -253,9 +204,10 @@ def main():
     # Set model hyperparameters.
     
     # k = [10, 50, 100, 200, 500]
-    k = [50]
+    k = [50, 100, 200]
     for k in k:
-        model = DeepAutoEncoder(train_matrix.shape[1], k)
+        print('k: {}'.format(k))
+        model = AutoEncoder(train_matrix.shape[1], k)
 
         # Set optimization hyperparameters.
         lr = 0.01
